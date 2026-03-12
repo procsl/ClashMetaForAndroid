@@ -121,9 +121,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
 
-private fun getV4Routes(): List<CIDR> {
+// 1. 定义一个辅助方法（注意：这里去掉了显式的 CIDR 类型引用，改用推导或具体类型）
+private fun getV4Routes(): List<com.github.kr328.clash.service.util.IPAddress> {
     val url = "http://127.0.0.1:8080/clash/ipv4.txt"
-    val timeout = 500
+    val timeout = 500 
 
     return try {
         java.net.URL(url).openConnection().apply {
@@ -133,13 +134,12 @@ private fun getV4Routes(): List<CIDR> {
             lines.filter { it.isNotBlank() }
                 .map { parseCIDR(it.trim()) }
                 .toList()
-        }.takeIf { it.isNotEmpty() } 
-            ?: throw Exception("Empty list")
+        }.takeIf { it.isNotEmpty() } ?: throw Exception("Empty list")
     } catch (e: Exception) {
-        // 打印错误日志，方便调试（正式环境可移除）
-        Log.e("VPN_ROUTE", "Fetch remote routes failed: ${e.message}, fallback to local.")
+        // 修复 Argument type mismatch: 传入 e.message 字符串
+        Log.e("ClashMeta", "Remote routes failed: ${e.message}", e)
         
-        // 兜底方案：读取本地 R.array
+        // 兜底方案
         resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR)
     }
 }
@@ -159,9 +159,9 @@ private fun getV4Routes(): List<CIDR> {
 
                 // 动态获取：优先网络，失败则返回本地 R.array
                 val ipv4Routes = getV4Routes()
-                ipv4Routes.forEach { 
-                  addRoute(it.ip, it.prefix) 
-                }
+                  ipv4Routes.forEach { route ->
+                        addRoute(route.ip, route.prefix) 
+                  }
 
           //      resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
           //          addRoute(it.ip, it.prefix)
