@@ -124,7 +124,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 // 1. 获取数据的辅助方法：去掉显式的 IPAddress 类型声明，直接返回 List<Any>
 private fun getV4Routes() = try {
     val url = "http://127.0.0.1:8080/clash/ipv4.txt"
-    val timeout = 2000
+    val timeout = 500
 
     java.net.URL(url).openConnection().apply {
         connectTimeout = timeout
