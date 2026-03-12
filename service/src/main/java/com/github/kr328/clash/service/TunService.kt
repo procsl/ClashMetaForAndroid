@@ -156,14 +156,11 @@ private fun getV4Routes() = try {
             if (store.bypassPrivateNetwork) {
 
                 // 动态获取：优先网络，失败则返回本地 R.array
-                val ipv4Routes = getV4Routes()
-                  ipv4Routes.forEach { route ->
-                        addRoute(route.ip, route.prefix) 
-                  }
+                
 
-          //      resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
-          //          addRoute(it.ip, it.prefix)
-         //       }
+              resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
+                   addRoute(it.ip, it.prefix)
+               }
                 if (store.allowIpv6) {
                     resources.getStringArray(R.array.bypass_private_route6).map(::parseCIDR).forEach {
                         addRoute(it.ip, it.prefix)
