@@ -121,27 +121,25 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
 
-// 1. 定义一个辅助方法（注意：这里去掉了显式的 CIDR 类型引用，改用推导或具体类型）
-private fun getV4Routes(): List<com.github.kr328.clash.service.util.IPAddress> {
+// 1. 获取数据的辅助方法：去掉显式的 IPAddress 类型声明，直接返回 List<Any>
+private fun getV4Routes() = try {
     val url = "http://127.0.0.1:8080/clash/ipv4.txt"
-    val timeout = 500 
+    val timeout = 2000
 
-    return try {
-        java.net.URL(url).openConnection().apply {
-            connectTimeout = timeout
-            readTimeout = timeout
-        }.getInputStream().bufferedReader().useLines { lines ->
-            lines.filter { it.isNotBlank() }
-                .map { parseCIDR(it.trim()) }
-                .toList()
-        }.takeIf { it.isNotEmpty() } ?: throw Exception("Empty list")
-    } catch (e: Exception) {
-        // 修复 Argument type mismatch: 传入 e.message 字符串
-        Log.e("ClashMeta", "Remote routes failed: ${e.message}", e)
-        
-        // 兜底方案
-        resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR)
-    }
+    java.net.URL(url).openConnection().apply {
+        connectTimeout = timeout
+        readTimeout = timeout
+    }.getInputStream().bufferedReader().useLines { lines ->
+        lines.filter { it.isNotBlank() }
+            .map { parseCIDR(it.trim()) }
+            .toList()
+    }.takeIf { it.isNotEmpty() } ?: throw Exception("Empty")
+} catch (e: Exception) {
+    // 适配 ClashMeta 的 Log 封装：只传字符串，不传 e
+    Log.e("Remote routes failed: ${e.message}")
+    
+    // 兜底方案
+    resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR)
 }
 
     private fun TunModule.open() {
