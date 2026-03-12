@@ -120,6 +120,30 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         runtime.requestGc()
     }
 
+
+private fun getV4Routes(): List<CIDR> {
+    val url = "http://127.0.0.1:8080/clash/ipv4.txt"
+    val timeout = 500
+
+    return try {
+        java.net.URL(url).openConnection().apply {
+            connectTimeout = timeout
+            readTimeout = timeout
+        }.getInputStream().bufferedReader().useLines { lines ->
+            lines.filter { it.isNotBlank() }
+                .map { parseCIDR(it.trim()) }
+                .toList()
+        }.takeIf { it.isNotEmpty() } 
+            ?: throw Exception("Empty list")
+    } catch (e: Exception) {
+        // 打印错误日志，方便调试（正式环境可移除）
+        Log.e("VPN_ROUTE", "Fetch remote routes failed: ${e.message}, fallback to local.")
+        
+        // 兜底方案：读取本地 R.array
+        resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR)
+    }
+}
+
     private fun TunModule.open() {
         val store = ServiceStore(self)
 
@@ -132,9 +156,16 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             // Route
             if (store.bypassPrivateNetwork) {
-                resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
-                    addRoute(it.ip, it.prefix)
+
+                // 动态获取：优先网络，失败则返回本地 R.array
+                val ipv4Routes = getV4Routes()
+                ipv4Routes.forEach { 
+                  addRoute(it.ip, it.prefix) 
                 }
+
+          //      resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
+          //          addRoute(it.ip, it.prefix)
+         //       }
                 if (store.allowIpv6) {
                     resources.getStringArray(R.array.bypass_private_route6).map(::parseCIDR).forEach {
                         addRoute(it.ip, it.prefix)
